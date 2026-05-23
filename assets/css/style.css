@@ -44,6 +44,13 @@ html {
      Horizontal overflow is clipped on body instead. */
 }
 
+/* Lenis smooth scroll — recommended setup */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+
 body {
   /* Body MUST stay transparent — a solid bg here would cover the scroll-video. */
   background: transparent;
@@ -85,6 +92,18 @@ input, textarea, select { font: inherit; color: inherit; }
   transform: scale(1.05);
   will-change: transform;
 }
+.bg-scroll__canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: contrast(1.15) saturate(1.4) brightness(1.0);
+  transform: scale(1.05);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+.bg-scroll.canvas-ready .bg-scroll__canvas { opacity: 1; }
+.bg-scroll.canvas-ready .bg-scroll__video { opacity: 0; }
 .bg-scroll__tint {
   position: absolute; inset: 0;
   background:

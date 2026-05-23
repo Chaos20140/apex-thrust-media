@@ -1,6 +1,7 @@
 /* =========================================================
-   REDLINE/STUDIO — Core Script v2
-   Highlights: scroll-scrub video · three.js 3D · perf-aware
+   REDLINE/STUDIO — Core Script v3
+   Highlights: Lenis smooth scroll · canvas-rendered scroll video
+   · three.js 3D · perf-aware
    ========================================================= */
 (() => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -9,6 +10,35 @@
   const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
   const lerp  = (a, b, n) => a + (b - a) * n;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  /* =========================================================
+     LENIS — smooth scroll (Apple/Stripe-style inertia)
+     Single shared instance, hooked into GSAP ticker so
+     ScrollTrigger updates in lock-step.
+     ========================================================= */
+  let lenis = null;
+  if (window.Lenis && !reduce) {
+    lenis = new Lenis({
+      duration: 1.15,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+      smoothTouch: false,
+      wheelMultiplier: 1.0,
+      lerp: 0.085,
+    });
+    // Use GSAP ticker as the single rAF source — no double scheduling.
+    if (window.gsap) {
+      gsap.ticker.add((time) => lenis.raf(time * 1000));
+      gsap.ticker.lagSmoothing(0);
+    } else {
+      const raf = (t) => { lenis.raf(t); requestAnimationFrame(raf); };
+      requestAnimationFrame(raf);
+    }
+    // Connect Lenis to ScrollTrigger so pinning + scrub stay aligned.
+    if (window.ScrollTrigger) {
+      lenis.on("scroll", ScrollTrigger.update);
+    }
+  }
 
   /* ---------- LOADER ---------- */
   const loader = $("#loader");
@@ -237,68 +267,227 @@
   });
 
   /* =========================================================
-     SCROLL-SCRUB BACKGROUND VIDEO
-     Strategy: lerp video.currentTime toward a target derived
-     from scroll progress. Lerping smooths browser-throttled
-     seek + makes scroll feel "rolling" instead of robotic.
+     SCROLL-SCRUB BACKGROUND VIDEO — canvas-based frame renderer
+     Strategy:
+       1. After metadata loads, extract N frames by playing the
+          video once at 4x speed and capturing each decoded frame
+          via requestVideoFrameCallback (when available) or by
+          time-stepped seeking.
+       2. Each frame is stored as an ImageBitmap (GPU-resident).
+       3. On scroll we lerp a smoothed progress and draw the
+          closest frame to a 2D canvas. No more `video.currentTime`
+          seeking on every scroll tick — that was the source of
+          stutter (driven by sparse video keyframes + browser
+          seek throttling).
      ========================================================= */
-  const scrub = (() => {
-    const wrap  = $("#bgScroll");
-    const video = $("#bgScrollVideo");
-    if (!wrap || !video) return null;
+  (() => {
+    const wrap   = $("#bgScroll");
+    const video  = $("#bgScrollVideo");
+    const canvas = $("#bgScrollCanvas");
+    if (!wrap || !video || !canvas) return;
 
     const startEl = $("#manifesto");
     const endEl   = $(".contact") || $("#contact");
-    if (!startEl || !endEl) return null;
+    if (!startEl || !endEl) return;
 
-    let duration = 0;
-    let ready = false;
+    const FRAME_TARGET = reduce ? 12 : 90;       // ~9 fps over a 10s clip
+    const MAX_W = Math.min(window.innerWidth * 2, 1920);
+    const MAX_H = Math.min(window.innerHeight * 2, 1080);
+
+    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const off = (typeof OffscreenCanvas !== "undefined")
+      ? new OffscreenCanvas(MAX_W, MAX_H)
+      : Object.assign(document.createElement("canvas"), { width: MAX_W, height: MAX_H });
+    const offCtx = off.getContext("2d", { alpha: false });
+
+    let duration   = 0;
+    let frames     = [];     // { t: number, bmp: ImageBitmap }
+    let framesReady = false;
+    let extracting  = false;  // suspend any other video manipulation while true
+    let smoothedProg = 0;
+    let targetProg   = 0;
     let active = false;
-    let target = 0;
-    let current = 0;
+    let sourceLoaded = false;
 
-    const onMeta = () => {
-      duration = video.duration || 0;
-      ready = duration > 0;
-      // Some browsers won't decode unless we attempt play once
-      video.play().then(() => video.pause()).catch(() => { /* noop */ });
+    // Sizing — match canvas resolution to viewport, keep aspect
+    const sizeCanvas = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.round(wrap.clientWidth  * dpr);
+      const h = Math.round(wrap.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w; canvas.height = h;
+      }
     };
-    video.addEventListener("loadedmetadata", onMeta);
-    if (video.readyState >= 1) onMeta();
+    sizeCanvas();
+    window.addEventListener("resize", sizeCanvas);
 
-    // Compute scroll progress + lerp targets each frame
-    const computeTarget = () => {
+    /* ---- compute scroll progress ---- */
+    const computeProg = () => {
       const sTop = startEl.getBoundingClientRect().top + window.scrollY;
       const eBox = endEl.getBoundingClientRect();
-      const eBottom = eBox.top + window.scrollY + eBox.height * 0.6;
+      const eBottom = eBox.top + window.scrollY + eBox.height * 0.7;
       const scrollMid = window.scrollY + window.innerHeight * 0.5;
-      const prog = clamp((scrollMid - sTop) / (eBottom - sTop), 0, 1);
-      target = prog * duration;
-      return prog;
+      return clamp((scrollMid - sTop) / (eBottom - sTop), 0, 1);
     };
 
-    const loop = () => {
-      if (ready) {
-        const prog = computeTarget();
-        const wantActive = prog > 0 && prog < 1;
-        if (wantActive && !active) { wrap.classList.add("is-active"); active = true; }
-        else if (!wantActive && active) { wrap.classList.remove("is-active"); active = false; }
+    /* ---- draw a given progress to the visible canvas ---- */
+    const drawAt = (prog) => {
+      if (!framesReady || frames.length === 0) return;
+      const idx = clamp(Math.round(prog * (frames.length - 1)), 0, frames.length - 1);
+      const bmp = frames[idx]?.bmp;
+      if (!bmp) return;
+      // cover-fit
+      const cw = canvas.width, ch = canvas.height;
+      const bw = bmp.width,    bh = bmp.height;
+      const scale = Math.max(cw / bw, ch / bh);
+      const dw = bw * scale, dh = bh * scale;
+      const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+      ctx.drawImage(bmp, dx, dy, dw, dh);
+    };
 
-        // Smooth lerp — Δ small ⇒ no need to seek (avoids stutter)
-        current = lerp(current, target, 0.12);
-        if (Math.abs(video.currentTime - current) > 0.033) {
-          try { video.currentTime = current; } catch (_) {}
-        }
-        // Expose progress to other systems (3D, meters)
-        scrub.progress = prog;
+    /* ---- main render loop (smoothed) ---- */
+    const tick = () => {
+      targetProg = computeProg();
+      smoothedProg = lerp(smoothedProg, targetProg, 0.14);
+
+      const wantActive = targetProg > 0 && targetProg < 1;
+      if (wantActive && !active) { wrap.classList.add("is-active"); active = true; }
+      else if (!wantActive && active) { wrap.classList.remove("is-active"); active = false; }
+
+      if (framesReady && active) drawAt(smoothedProg);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+
+    /* ---- pre-extraction fallback: while frames load,
+            use the raw video element (visible by default).
+            CRITICAL: suspends itself while extracting so it
+            doesn't fight the extraction loop for currentTime. ---- */
+    let videoFallbackRAF = null;
+    const videoFallbackLoop = () => {
+      if (framesReady || !sourceLoaded || extracting) {
+        videoFallbackRAF = null;
+        return;
       }
-      requestAnimationFrame(loop);
+      const prog = computeProg();
+      const t = prog * duration;
+      if (Math.abs(video.currentTime - t) > 0.08) {
+        try { video.currentTime = t; } catch (_) {}
+      }
+      videoFallbackRAF = requestAnimationFrame(videoFallbackLoop);
     };
-    requestAnimationFrame(loop);
 
-    return { wrap, video, get progress() { return _progress; }, set progress(p) { _progress = p; } };
+    /* ---- attach video source LATE — avoid eager full download
+            slowing first paint ---- */
+    const attachSource = () => {
+      const src = document.createElement("source");
+      src.src = "assets/video/scroll.mp4?v=20260523d";
+      src.type = "video/mp4";
+      video.appendChild(src);
+      video.load();
+    };
+
+    /* ---- frame extractor: prefers playback + rVFC for speed ---- */
+    const extract = async () => {
+      duration = video.duration;
+      if (!duration || !isFinite(duration)) return;
+
+      extracting = true;
+      const targetCount = FRAME_TARGET;
+      const step = duration / targetCount;
+
+      try {
+        // Strategy A — rVFC (Chromium, modern WebKit).
+        if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+          try {
+            await extractViaPlayback(targetCount);
+            if (frames.length > 0) return;
+          } catch (_) { /* fall through */ }
+        }
+        // Strategy B — seek-based fallback
+        await extractViaSeek(targetCount, step);
+      } finally {
+        extracting = false;
+        framesReady = frames.length > 0;
+        if (framesReady) wrap.classList.add("canvas-ready");
+      }
+    };
+
+    const extractViaPlayback = (targetCount) => new Promise((resolve, reject) => {
+      const raw = [];   // all decoded frames {t, bmp}
+      video.muted = true;
+      video.playbackRate = 4.0;
+      video.currentTime = 0;
+
+      const onFrame = async (_now, meta) => {
+        try {
+          offCtx.drawImage(video, 0, 0, off.width, off.height);
+          const bmp = await createImageBitmap(off);
+          raw.push({ t: meta.mediaTime, bmp });
+        } catch (_) {}
+        if (!video.ended && !video.paused) video.requestVideoFrameCallback(onFrame);
+      };
+
+      video.requestVideoFrameCallback(onFrame);
+
+      video.addEventListener("ended", () => {
+        video.playbackRate = 1.0;
+        if (raw.length < 2) { reject(new Error("no frames")); return; }
+        // resample raw frames to evenly spaced target buckets
+        frames = new Array(targetCount);
+        for (let i = 0; i < targetCount; i++) {
+          const want = (i / (targetCount - 1)) * raw[raw.length - 1].t;
+          // pick nearest
+          let best = raw[0], bestD = Math.abs(raw[0].t - want);
+          for (let j = 1; j < raw.length; j++) {
+            const d = Math.abs(raw[j].t - want);
+            if (d < bestD) { best = raw[j]; bestD = d; }
+          }
+          frames[i] = best;
+        }
+        // free the extras we didn't pick
+        for (const r of raw) if (!frames.includes(r)) r.bmp.close?.();
+        resolve();
+      }, { once: true });
+
+      video.play().catch(reject);
+    });
+
+    const extractViaSeek = async (targetCount, step) => {
+      video.muted = true;
+      for (let i = 0; i < targetCount; i++) {
+        const t = i * step;
+        await new Promise((res) => {
+          const cb = () => { video.removeEventListener("seeked", cb); res(); };
+          video.addEventListener("seeked", cb);
+          try { video.currentTime = t; } catch (_) { res(); }
+        });
+        try {
+          offCtx.drawImage(video, 0, 0, off.width, off.height);
+          const bmp = await createImageBitmap(off);
+          frames.push({ t, bmp });
+        } catch (_) {}
+      }
+    };
+
+    /* ---- bootstrap ---- */
+    const onMeta = () => {
+      sourceLoaded = true;
+      // Don't run the fallback during extraction (it would fight us
+      // for `currentTime`). After extract finishes (or fails) we
+      // either render from the canvas frames or kick the fallback.
+      extract().finally(() => {
+        if (!framesReady && !videoFallbackRAF) {
+          videoFallbackRAF = requestAnimationFrame(videoFallbackLoop);
+        }
+      });
+    };
+    video.addEventListener("loadedmetadata", onMeta, { once: true });
+
+    // Attach source after first paint to keep TTI clean
+    if (document.readyState === "complete") attachSource();
+    else window.addEventListener("load", attachSource, { once: true });
   })();
-  let _progress = 0;
 
   /* =========================================================
      THREE.JS — CARBON GEOMETRY
