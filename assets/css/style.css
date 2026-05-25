@@ -263,10 +263,13 @@ input, textarea, select { font: inherit; color: inherit; }
 .nav__logo {
   display: flex; align-items: center; gap: 12px;
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
+.nav__logo-text { white-space: nowrap; }
 .nav__logo-mark {
   display: inline-flex; align-items: center; justify-content: center;
   width: 44px; height: 44px;
@@ -339,7 +342,10 @@ input, textarea, select { font: inherit; color: inherit; }
   letter-spacing: 0.14em; text-transform: uppercase;
   background: var(--ink); color: var(--bg);
   transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
+.nav__cta span { white-space: nowrap; }
 .nav__cta:hover {
   background: var(--red); color: var(--ink); border-color: var(--red);
   box-shadow: 0 0 40px rgba(var(--red-glow), 0.5);
@@ -1928,6 +1934,8 @@ body.nav-open { overflow: hidden; }
   max-width: 1400px;
   margin: 0 auto;
   position: relative;
+  /* Stop wide grids/maps from creating horizontal scrollbars */
+  overflow: hidden;
 }
 .page-hero {
   border-bottom: 1px solid var(--line);
@@ -1945,12 +1953,15 @@ body.nav-open { overflow: hidden; }
 }
 .page-hero__title {
   font-family: var(--font-display);
-  font-size: clamp(48px, 11vw, 168px);
+  font-size: clamp(42px, 8.5vw, 132px);
   line-height: 0.9;
   letter-spacing: -0.02em;
   text-transform: uppercase;
   font-weight: 400;
   margin: 8px 0 16px;
+  /* Long German words like ÜBERSCHRIFT shouldn't burst the page */
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .page-hero__title em {
   font-family: var(--font-display-2);

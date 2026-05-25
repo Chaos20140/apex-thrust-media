@@ -16,7 +16,7 @@
 
 ## 1. Projekt-Identität
 
-- **Studio**: Apex Thrust Media (Inhaber: `Tolgay Ulukaya`, Dresden). Logo-Lockup: `APEX/THRUST MEDIA`.
+- **Studio**: Apex Thrust Media (Inhaber: `Tolunay Usul`, Dresden). Logo-Lockup: `APEX/THRUST MEDIA`.
 - **Positionierung**: aggressives Web-Design-Studio, F1-/Karbon-/Cyberpunk-Sprache.
 - **Name-Bedeutung**:
   - „Apex" = Scheitelpunkt einer Rennlinie / höchster Punkt / typografisch Spitze eines Buchstabens — Präzision.
