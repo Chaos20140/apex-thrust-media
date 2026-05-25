@@ -331,9 +331,12 @@
     const endEl   = $(".contact") || $("#contact");
     if (!startEl || !endEl) return;
 
-    const FRAME_TARGET = reduce ? 12 : 140;      // denser sampling → less stutter
-    const MAX_W = Math.min(window.innerWidth * 2, 1920);
-    const MAX_H = Math.min(window.innerHeight * 2, 1080);
+    const FRAME_TARGET = reduce ? 12 : 220;      // denser sampling → less stutter
+    // We render the background video DIM + blurred; full 2× DPR is wasted
+    // pixels. Cap at 1.5× viewport (or 1440×900 absolute) — saves enough
+    // GPU memory to afford 220 frames instead of 140.
+    const MAX_W = Math.min(window.innerWidth * 1.5, 1440);
+    const MAX_H = Math.min(window.innerHeight * 1.5, 900);
 
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     const off = (typeof OffscreenCanvas !== "undefined")

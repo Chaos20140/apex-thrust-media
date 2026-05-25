@@ -1,4 +1,4 @@
-# CLAUDE.md — REDLINE/STUDIO Buildbook
+# CLAUDE.md — APEX/STUDIO Buildbook
 
 > Diese Datei ist meine eigene Bauanleitung. Vor jeder größeren Änderung **erst diese Datei lesen**, danach den eigenen Code hinterfragen.
 
@@ -16,9 +16,10 @@
 
 ## 1. Projekt-Identität
 
-- **Studio**: REDLINE/STUDIO (Platzhalter — `Tolgay Ulukaya` als reale Person, Dresden).
+- **Studio**: APEX/STUDIO (Inhaber: `Tolgay Ulukaya`, Dresden).
 - **Positionierung**: aggressives Web-Design-Studio, F1-/Karbon-/Cyberpunk-Sprache.
-- **Slogan-Vokabular**: „Redline", „Velocity", „Pit Lane", „Pole Position", „Carbon", „Throttle", „Signal".
+- **Name-Doppelbedeutung**: „Apex" = (1) Scheitelpunkt einer Kurve, optimaler Linienpunkt im Rennen; (2) höchster Punkt, Spitzenleistung; (3) typografischer Begriff (Spitze eines Buchstabens).
+- **Slogan-Vokabular**: „Apex", „Redline", „Velocity", „Pit Lane", „Pole Position", „Carbon", „Throttle", „Signal".
 - **Referenz**: collabcapitolium.fr — daraus übernommen: Hero mit Bewegtbild-Hintergrund, große brutalistische Display-Typografie, Stat-Block, kuratierte Cases, monospaced Labels.
 
 ---
