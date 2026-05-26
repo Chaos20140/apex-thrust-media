@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@300;400;700&family=Manrope:wght@300;400;500;700&family=Big+Shoulders+Display:wght@700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260526d" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260526e" />
 </head>
 <body>
 
@@ -350,59 +350,99 @@
       <em>Eine</em> Pole Position.
     </h2>
 
-    <div class="process__track">
-      <div class="process__line"></div>
+    <!-- Inline reusable F1 SVG symbol -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <symbol id="f1car" viewBox="0 0 120 240">
+          <ellipse cx="60" cy="125" rx="48" ry="100" fill="rgba(255,31,61,0.12)"/>
+          <rect x="15" y="8" width="90" height="11" rx="2" fill="currentColor"/>
+          <rect x="46" y="10" width="28" height="7" fill="#ff1f3d"/>
+          <rect x="2" y="22" width="16" height="34" rx="3" fill="#0a0203"/>
+          <rect x="102" y="22" width="16" height="34" rx="3" fill="#0a0203"/>
+          <path d="M 50 19 L 70 19 L 74 60 L 46 60 Z" fill="currentColor"/>
+          <rect x="55" y="22" width="10" height="38" fill="#ff1f3d"/>
+          <path d="M 32 60 L 88 60 L 92 165 L 28 165 Z" fill="currentColor"/>
+          <circle cx="60" cy="100" r="11" fill="#0a0203" stroke="currentColor" stroke-width="2"/>
+          <circle cx="60" cy="100" r="5" fill="#ff1f3d"/>
+          <path d="M 48 130 L 72 130 L 70 165 L 50 165 Z" fill="#0a0203"/>
+          <rect x="0" y="168" width="22" height="42" rx="3" fill="#0a0203"/>
+          <rect x="98" y="168" width="22" height="42" rx="3" fill="#0a0203"/>
+          <rect x="14" y="216" width="92" height="16" rx="2" fill="currentColor"/>
+          <rect x="46" y="218" width="28" height="12" fill="#ff1f3d"/>
+          <rect x="14" y="210" width="3" height="26" fill="currentColor"/>
+          <rect x="103" y="210" width="3" height="26" fill="currentColor"/>
+        </symbol>
+      </defs>
+    </svg>
 
-      <div class="step" data-step>
-        <div class="step__index">
-          <span class="step__num">01</span>
-          <span class="step__pulse"></span>
+    <div class="grid">
+      <div class="grid__startline" aria-hidden="true">
+        <span class="grid__startline-flag"></span>
+        <span class="mono">— POLE POSITION · START LINE</span>
+        <span class="grid__startline-lights">
+          <span></span><span></span><span></span><span></span><span></span>
+        </span>
+      </div>
+
+      <article class="grid__slot grid__slot--right" data-step data-pos="1">
+        <div class="grid__car">
+          <span class="grid__pos mono">01</span>
+          <svg class="f1-car" aria-hidden="true"><use href="#f1car"/></svg>
+          <span class="grid__marker" aria-hidden="true"></span>
         </div>
         <div class="step__content">
-          <span class="step__label mono">— FORMATION LAP</span>
+          <span class="step__label mono">— FORMATION LAP · POLE POSITION</span>
           <h3>Discovery</h3>
           <p>Wir zerlegen dein Geschäftsmodell, deine Zielgruppe und deine Konkurrenz. Ohne Briefing kein Sieg.</p>
           <span class="step__time mono">Ø 1 Woche</span>
         </div>
-      </div>
+      </article>
 
-      <div class="step" data-step>
-        <div class="step__index">
-          <span class="step__num">02</span>
-          <span class="step__pulse"></span>
+      <article class="grid__slot grid__slot--left" data-step data-pos="2">
+        <div class="grid__car">
+          <span class="grid__pos mono">02</span>
+          <svg class="f1-car" aria-hidden="true"><use href="#f1car"/></svg>
+          <span class="grid__marker" aria-hidden="true"></span>
         </div>
         <div class="step__content">
-          <span class="step__label mono">— PIT BOX</span>
-          <h3>Konzept & Design</h3>
+          <span class="step__label mono">— PIT BOX · KONZEPTION</span>
+          <h3>Konzept &amp; Design</h3>
           <p>Art Direction, Wireframes, High-Fidelity-Designs in Figma. Du bekommst Vorschläge, die dich nervös machen — auf die richtige Art.</p>
           <span class="step__time mono">Ø 2–3 Wochen</span>
         </div>
-      </div>
+      </article>
 
-      <div class="step" data-step>
-        <div class="step__index">
-          <span class="step__num">03</span>
-          <span class="step__pulse"></span>
+      <article class="grid__slot grid__slot--right" data-step data-pos="3">
+        <div class="grid__car">
+          <span class="grid__pos mono">03</span>
+          <svg class="f1-car" aria-hidden="true"><use href="#f1car"/></svg>
+          <span class="grid__marker" aria-hidden="true"></span>
         </div>
         <div class="step__content">
-          <span class="step__label mono">— FULL THROTTLE</span>
+          <span class="step__label mono">— FULL THROTTLE · BUILD</span>
           <h3>Development</h3>
           <p>Code, Motion, Integration. Saubere Architektur, lückenlose Performance, jede Animation auf 60fps.</p>
           <span class="step__time mono">Ø 2–4 Wochen</span>
         </div>
-      </div>
+      </article>
 
-      <div class="step" data-step>
-        <div class="step__index">
-          <span class="step__num">04</span>
-          <span class="step__pulse"></span>
+      <article class="grid__slot grid__slot--left" data-step data-pos="4">
+        <div class="grid__car">
+          <span class="grid__pos mono">04</span>
+          <svg class="f1-car" aria-hidden="true"><use href="#f1car"/></svg>
+          <span class="grid__marker" aria-hidden="true"></span>
         </div>
         <div class="step__content">
-          <span class="step__label mono">— CHECKERED FLAG</span>
-          <h3>Launch & Support</h3>
+          <span class="step__label mono">— CHECKERED FLAG · GO-LIVE</span>
+          <h3>Launch &amp; Support</h3>
           <p>Go-Live, Analytics, Iteration. Wir verschwinden nicht nach dem Rennen — wir bleiben am Funkgerät.</p>
           <span class="step__time mono">Laufend</span>
         </div>
+      </article>
+
+      <div class="grid__finishline" aria-hidden="true">
+        <span class="mono">— CHECKERED FLAG</span>
+        <span class="grid__checker"></span>
       </div>
     </div>
   </section>
@@ -570,6 +610,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
-  <script src="assets/js/main.js?v=20260526d"></script>
+  <script src="assets/js/main.js?v=20260526e"></script>
 </body>
 </html>

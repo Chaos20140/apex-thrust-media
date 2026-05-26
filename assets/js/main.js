@@ -688,13 +688,32 @@
       scrollTrigger: { trigger: ".contact", start: "top 70%" },
     });
 
-    gsap.utils.toArray("[data-step]").forEach((step) => {
-      gsap.fromTo(step,
-        { x: -40, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.9, ease: "power3.out",
-          scrollTrigger: { trigger: step, start: "top 80%" } }
-      );
-    });
+    /* PROCESS — F1 STARTING GRID
+       Cars drive in from below, then their content slides in
+       beside them. CSS transitions on .is-parked do the visual
+       work; ScrollTrigger just adds the class with a stagger. */
+    const slots = gsap.utils.toArray(".grid__slot[data-step]");
+    if (slots.length) {
+      ScrollTrigger.create({
+        trigger: ".grid",
+        start: "top 70%",
+        once: true,
+        onEnter: () => {
+          slots.forEach((s, i) => {
+            setTimeout(() => s.classList.add("is-parked"), i * 380);
+          });
+        },
+      });
+    } else {
+      // Fallback for any legacy [data-step] markup
+      gsap.utils.toArray("[data-step]").forEach((step) => {
+        gsap.fromTo(step,
+          { x: -40, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.9, ease: "power3.out",
+            scrollTrigger: { trigger: step, start: "top 80%" } }
+        );
+      });
+    }
 
     gsap.from(".footer__giant", {
       y: 200, ease: "power3.out", duration: 1.4,
